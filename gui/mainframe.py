@@ -1,7 +1,7 @@
 import wx
 from DataPreprocess import DataPreprocessingPage
 from Model import ModelEvaluationPage
-from traffic_monitoring import TrafficMonitoringPage
+from TrafficMonitor import TrafficMonitoringPage
 
 
 class MainFrame(wx.Frame):
