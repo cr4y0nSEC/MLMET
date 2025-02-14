@@ -1,6 +1,5 @@
 import wx
 from DataPreprocess import DataPreprocessingPage
-from Model import ModelEvaluationPage
 from TrafficMonitor import TrafficMonitoringPage
 
 
@@ -18,10 +17,8 @@ class MainFrame(wx.Frame):
 
         # 添加页面
         page1 = DataPreprocessingPage(notebook)
-        page2 = ModelEvaluationPage(notebook)
         page3 = TrafficMonitoringPage(notebook)
         notebook.AddPage(page1, "数据预处理")
-        notebook.AddPage(page2, "模型评估")
         notebook.AddPage(page3, "流量监测")
 
         # 设置窗口居中并显示
