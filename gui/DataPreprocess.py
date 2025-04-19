@@ -2,6 +2,7 @@ import wx
 import wx.grid as gridlib
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
+from sklearn.decomposition import PCA  # 导入 PCA 模块
 import threading
 
 
@@ -25,7 +26,7 @@ class DataPreprocessingPage(wx.Panel):
         hbox_controls = wx.BoxSizer(wx.HORIZONTAL)
 
         # 打开文件按钮
-        btn_open = wx.Button(self, label="打开 Excel 文件")
+        btn_open = wx.Button(self, label="打开流量文件")
         btn_open.Bind(wx.EVT_BUTTON, self.OnOpenFile)
         hbox_controls.Add(btn_open, 0, wx.ALL, 5)
 
@@ -60,6 +61,11 @@ class DataPreprocessingPage(wx.Panel):
         btn_clean.Bind(wx.EVT_BUTTON, self.OnCleanData)
         hbox_controls.Add(btn_clean, 0, wx.ALL, 5)
 
+        # PCA 降维按钮
+        btn_pca = wx.Button(self, label="PCA 降维")
+        btn_pca.Bind(wx.EVT_BUTTON, self.OnPCA)
+        hbox_controls.Add(btn_pca, 0, wx.ALL, 5)
+
         # 保存文件按钮
         btn_save = wx.Button(self, label="保存文件")
         btn_save.Bind(wx.EVT_BUTTON, self.OnSaveFile)
@@ -68,7 +74,7 @@ class DataPreprocessingPage(wx.Panel):
         self.vbox.Add(hbox_controls, 0, wx.EXPAND | wx.ALL, 5)
 
         # 创建一个占位符，稍后会在数据加载后替换为实际的网格
-        self.placeholder = wx.StaticText(self, label="请先选择一个 Excel 文件...")
+        self.placeholder = wx.StaticText(self, label="打开流量文件后数据将会显示于此")
         self.vbox.Add(self.placeholder, 1, wx.EXPAND | wx.ALL, 5)
 
         self.SetSizer(self.vbox)
@@ -221,7 +227,7 @@ class DataPreprocessingPage(wx.Panel):
             wx.MessageBox(f"独热编码失败: {str(e)}", "错误", wx.OK | wx.ICON_ERROR)
 
     def OnCleanData(self, event):
-        """去除脏数据"""
+
         if self.data is None:
             return
 
@@ -244,8 +250,42 @@ class DataPreprocessingPage(wx.Panel):
         except Exception as e:
             wx.MessageBox(f"去除脏数据失败: {str(e)}", "错误", wx.OK | wx.ICON_ERROR)
 
+    def OnPCA(self, event):
+
+        if self.data is None:
+            wx.MessageBox("没有数据可以处理！", "错误", wx.OK | wx.ICON_ERROR)
+            return
+
+        selected_columns = self.GetSelectedIndices()
+        if not selected_columns:
+            return
+
+        try:
+            # 获取用户输入的主成分数量
+            num_components = wx.GetNumberFromUser(
+                "请输入主成分数量（1 到 {} 之间）：".format(len(selected_columns)),
+                "主成分数量", "PCA 降维", value=2, min=1, max=len(selected_columns), parent=self)
+
+            if num_components == -1:  # 用户点击了取消
+                return
+
+            # 执行 PCA 降维
+            pca = PCA(n_components=num_components)
+            pca_result = pca.fit_transform(self.data.iloc[:, selected_columns])
+
+            # 将降维结果转换为 DataFrame
+            pca_df = pd.DataFrame(pca_result, columns=[f"PC{i+1}" for i in range(num_components)])
+
+            # 删除原始列并添加 PCA 结果列
+            self.data = pd.concat([self.data.drop(self.data.columns[selected_columns], axis=1), pca_df], axis=1)
+
+            # 更新网格显示
+            self.UpdateGrid()
+        except Exception as e:
+            wx.MessageBox(f"PCA 降维失败: {str(e)}", "错误", wx.OK | wx.ICON_ERROR)
+
     def OnSaveFile(self, event):
-        """保存当前数据到新的 Excel 文件"""
+
         if self.data is None:
             wx.MessageBox("没有数据可以保存！", "错误", wx.OK | wx.ICON_ERROR)
             return
@@ -267,7 +307,7 @@ class DataPreprocessingPage(wx.Panel):
             wx.MessageBox(f"保存文件失败: {str(e)}", "错误", wx.OK | wx.ICON_ERROR)
 
     def ShowProgressDialog(self, message, task, *args):
-        """显示进度弹窗"""
+
         progress_dialog = wx.ProgressDialog("请稍候", message, maximum=100, parent=self,
                                             style=wx.PD_APP_MODAL | wx.PD_AUTO_HIDE)
 
